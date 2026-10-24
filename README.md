@@ -105,7 +105,66 @@ Discovery can be verified independently of KWin: any small Qt program that calls
 per-user plugin dir must list `kwin4_effect_overview2` and report a matching
 `org.kde.kwin.EffectPluginFactory<version>` IID (this was done during development).
 
-## Enabling the effect
+## NixOS installation
+
+The repository ships a Nix flake (`flake.nix`, packaging under `nix/package.nix`
+and a NixOS module under `nix/module.nix`). The plugin is linked against the
+KWin of the nixpkgs set it is evaluated with, so the nixpkgs input **must match
+the nixpkgs your system was built from** — ABI of KWin's private libraries is
+not stable. In the consumer flake, add `inputs.nixpkgs.follows = "nixpkgs";`
+to the `kwin-effect-overview2` input to guarantee that.
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable"; # match your system
+    kwin-effect-overview2 = {
+      url = "github:USER/kwin-effect-overview2";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+}
+```
+
+### Declarative (NixOS module)
+
+```nix
+# in configuration.nix
+{
+  imports = [ inputs.kwin-effect-overview2.nixosModules.default ];
+  programs.kwin-effect-overview2.enable = true;
+}
+```
+
+### Plain package
+
+```nix
+environment.systemPackages = [
+  inputs.kwin-effect-overview2.packages.${pkgs.system}.default
+];
+```
+
+### Overlay (reuses your own nixpkgs)
+
+The overlay rebuilds the plugin against *your* nixpkgs (the KWin that the
+compositor actually runs), which keeps the ABI in sync:
+
+```nix
+nixpkgs.overlays = [ inputs.kwin-effect-overview2.overlays.default ];
+environment.systemPackages = [ pkgs.kwin-effect-overview2 ];
+```
+
+No `QT_PLUGIN_PATH` or systemd-unit overrides are needed on NixOS: nixpkgs'
+qtbase adds `PATH`-derived plugin directories (`bin/../lib/qt-6/plugins`) to
+`QCoreApplication::libraryPaths()`, `/lib` is linked into the system profile by
+default, and KWin scans the `kwin/effects/plugins` subdirectory of those paths
+(the effect's config module is picked up from `kwin/effects/configs`, also in
+the profile, by systemsettings).
+
+As everywhere else, the effect is disabled by default: enable *Overview 2* in
+Desktop Effects, disable the stock *Overview*, and assign a shortcut manually.
+
+
 
 1. Restart KWin (`killall -3 kwin_wayland`… relogin) or simply run
    `qdbus org.kde.KWin /Effects org.kde.KWin.Effects.loadEffect kwin4_effect_overview2`
