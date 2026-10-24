@@ -37,3 +37,36 @@ target_link_libraries(kwin4_effect_overview2 PRIVATE
 
     Qt6::Quick
 )
+
+### Fork note: the configuration KCM ("Configure…" button in the Desktop
+### Effects systemsettings module). Discovered through the fork effect's
+### metadata.json "X-KDE-ConfigModule" key, installed in kwin/effects/configs
+### like the stock effect config modules.
+set(kwin4_effect_overview2_config_SOURCES
+    kcm/overview2effectkcm.cpp
+)
+ki18n_wrap_ui(kwin4_effect_overview2_config_SOURCES
+    kcm/overview2effectkcm.ui
+)
+kconfig_add_kcfg_files(kwin4_effect_overview2_config_SOURCES
+    overviewconfig.kcfgc
+)
+
+kcoreaddons_add_plugin(kwin4_effect_overview2_config
+    INSTALL_NAMESPACE "kwin/effects/configs"
+    SOURCES ${kwin4_effect_overview2_config_SOURCES}
+)
+target_compile_definitions(kwin4_effect_overview2_config PRIVATE -DTRANSLATION_DOMAIN=\"kwin\")
+
+target_link_libraries(kwin4_effect_overview2_config PRIVATE
+    KWin::kwin
+
+    KF6::KCMUtils
+    KF6::CoreAddons
+    KF6::GlobalAccel
+    KF6::I18n
+    KF6::XmlGui
+
+    Qt6::DBus
+    Qt6::Widgets
+)

@@ -24,6 +24,19 @@ with two behavioral changes:
      content is centered inside the panel-free area (net offset `(left - right)/2`
      on the x axis, `(top - bottom)/2` on the y axis), so the effect does not
      cover panels on any edge, and a panel on any edge is treated identically.
+   - Panel windows are recognized by their bar shape (long along a screen edge,
+     thin across it), so that e.g. a full-width bottom panel is not mistaken
+     for left/right insets.
+
+3. **A configuration UI is available from the Desktop Effects systemsettings module.**
+   - Like the stock Overview effect, the fork declares `"X-KDE-ConfigModule"` in
+     its `src/metadata.json` and builds a KCModule target
+     (`kwin4_effect_overview2_config`, from `src/kcm/`) installed into
+     `lib/qt6/plugins/kwin/effects/configs`. It exposes the same three options
+     (ignore minimized windows, windows organized in the grid view, search
+     results include filtered windows) plus a shortcuts editor for the fork's
+     global actions ("Overview 2", "Grid View 2" and the two cycle actions).
+     Unlike stock, no default keybindings are set.
 
 Everything else (search, KRunner integration, gestures, animations, grid view, …) is unchanged.
 

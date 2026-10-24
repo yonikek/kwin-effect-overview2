@@ -6,5 +6,6 @@
         "License": "GPL",
         "Name": "Overview 2 (fork of Overview)",
         "Version": "6.8.1"
-    }
+    },
+    "X-KDE-ConfigModule": "kwin4_effect_overview2_config"
 }
