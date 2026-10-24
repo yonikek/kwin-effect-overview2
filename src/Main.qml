@@ -432,6 +432,15 @@ FocusScope {
         for (const key in dockRects) {
             const r = dockRects[key];
             if (r.hidden) continue;
+            // Fork note: ignore rects that don't fully sit on this screen,
+            // or bogus ones that would produce giant insets (e.g. during
+            // startup, or with temporary/invalid window geometries).
+            if (!Number.isFinite(r.x) || !Number.isFinite(r.y)
+                    || !Number.isFinite(r.width) || !Number.isFinite(r.height)
+                    || r.x < 0 || r.y < 0
+                    || r.x + r.width > scr.width || r.y + r.height > scr.height) {
+                continue;
+            }
             if (r.x <= snap) {
                 left = Math.max(left, r.x + r.width);
             }
@@ -445,6 +454,13 @@ FocusScope {
                 bottom = Math.max(bottom, scr.height - r.y);
             }
         }
+        // Fork note: also cap the insets so that the remaining free area
+        // always stays generous (at least 2/3 of the screen per axis).
+        const max = 0.34; // fraction of the screen dimension
+        left = Math.min(left, scr.width * max);
+        right = Math.min(right, scr.width * max);
+        top = Math.min(top, scr.height * max);
+        bottom = Math.min(bottom, scr.height * max);
         dockLeftInset = left > 0 ? left + spacing : 0;
         dockTopInset = top > 0 ? top + spacing : 0;
         dockRightInset = right > 0 ? right + spacing : 0;
@@ -739,12 +755,21 @@ FocusScope {
                     focus: current
                     // Fork note: add the panel (dock) insets to the heap padding
                     // so the window previews are arranged within the screen area
-                    // that is not covered by the panel.
-                    padding: Kirigami.Units.largeSpacing
-                        + Math.max(container.dockLeftInset,
-                                   container.dockTopInset,
-                                   container.dockRightInset,
-                                   container.dockBottomInset)
+                    // that is not covered by the panel. The padding is capped so
+                    // that the layout area never becomes degenerate (the ExpoLayout
+                    // asserts if the available area is smaller than its minimum
+                    // window size).
+                    padding: {
+                        const outerSpacing = Kirigami.Units.largeSpacing;
+                        const inset = Math.max(container.dockLeftInset,
+                                               container.dockTopInset,
+                                               container.dockRightInset,
+                                               container.dockBottomInset);
+                        const maxPadding = Math.max(outerSpacing,
+                            Math.min(parent.width, parent.height) / 2
+                                - 2 * Kirigami.Units.gridUnit);
+                        return Math.min(outerSpacing + inset, maxPadding);
+                    }
                     animationDuration: effect.animationDuration
                     animationEnabled:  (gridVal !== 0 || mainBackground.current) && organized
                     organized: container.state !== "initial"
