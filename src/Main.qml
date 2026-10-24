@@ -425,7 +425,6 @@ FocusScope {
 
     function updateDockInsets() {
         const scr = targetScreen.geometry;
-        const snap = Kirigami.Units.gridUnit;    // docks hug a screen edge within this distance
         const spacing = Kirigami.Units.largeSpacing;
         let left = 0, top = 0, right = 0, bottom = 0;
         for (const key in dockRects) {
@@ -440,26 +439,37 @@ FocusScope {
                     || r.x + r.width > scr.width || r.y + r.height > scr.height) {
                 continue;
             }
-            if (r.x <= snap) {
+            // A panel hugs one screen edge: it is long ALONG that edge
+            // and thin perpendicular to it. Requiring the bar shape avoids
+            // misclassifying docks that merely touch the edge, e.g. a full
+            // width bottom bar also touches the left/right edges.
+            const tolerance = Kirigami.Units.gridUnit;
+            const minEdgeLength = 0.7;          // of the perpendicular screen dimension
+            const maxThickness = 0.4;           // of the screen dimension of the other axis
+            if (r.x <= tolerance && r.height >= scr.height * minEdgeLength
+                    && r.width <= scr.width * maxThickness) {
                 left = Math.max(left, r.x + r.width);
             }
-            if (r.y <= snap) {
-                top = Math.max(top, r.y + r.height);
-            }
-            if (r.x + r.width >= scr.width - snap) {
+            if (r.x + r.width >= scr.width - tolerance && r.height >= scr.height * minEdgeLength
+                    && r.width <= scr.width * maxThickness) {
                 right = Math.max(right, scr.width - r.x);
             }
-            if (r.y + r.height >= scr.height - snap) {
+            if (r.y <= tolerance && r.width >= scr.width * minEdgeLength
+                    && r.height <= scr.height * maxThickness) {
+                top = Math.max(top, r.y + r.height);
+            }
+            if (r.y + r.height >= scr.height - tolerance && r.width >= scr.width * minEdgeLength
+                    && r.height <= scr.height * maxThickness) {
                 bottom = Math.max(bottom, scr.height - r.y);
             }
         }
         // Fork note: also cap the insets so that the remaining free area
-        // always stays generous (at least 2/3 of the screen per axis).
-        const max = 0.34; // fraction of the screen dimension
-        left = Math.min(left, scr.width * max);
-        right = Math.min(right, scr.width * max);
-        top = Math.min(top, scr.height * max);
-        bottom = Math.min(bottom, scr.height * max);
+        // always stays generous (at most ~1/3 of the screen per axis).
+        const capFraction = 0.34;
+        left = Math.min(left, scr.width * capFraction);
+        right = Math.min(right, scr.width * capFraction);
+        top = Math.min(top, scr.height * capFraction);
+        bottom = Math.min(bottom, scr.height * capFraction);
         dockLeftInset = left > 0 ? left + spacing : 0;
         dockTopInset = top > 0 ? top + spacing : 0;
         dockRightInset = right > 0 ? right + spacing : 0;
