@@ -27,6 +27,8 @@ include(KDECompilerSettings NO_POLICY_SCOPE)
 find_package(Qt6 CONFIG REQUIRED COMPONENTS
     Core
     Quick
+    Widgets
+    DBus
 )
 
 find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
@@ -35,6 +37,8 @@ find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS
     GlobalAccel
     I18n
     Runner
+    KCMUtils
+    XmlGui
 )
 
 find_package(KWin ${KWIN_MIN_VERSION} CONFIG REQUIRED)
