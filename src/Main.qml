@@ -7,13 +7,17 @@
 */
 
 // Fork note:
-// - Virtual desktops can no longer be created, deleted or renamed
-//   ("+" key and "Add Virtual Desktop" buttons removed).
+// - Virtual desktop management (create / delete / rename) is disabled by
+//   default, but can be re-enabled through the "workspace management" toggle
+//   in the effect's configuration UI.
 // - The panel (dock) windows are kept visible while the effect is active
-//   instead of fading away at the end of the transition. They are also drawn
-//   above the overview UI so they are never covered.
-// - The overview UI (desktop bar, search bar) is shifted out of the area
-//   occupied by the panel, and the window heap layout avoids that area.
+//   instead of fading away at the end of the transition ("show panel" toggle,
+//   default on). They are also drawn above the overview UI so they are never
+//   covered. With the toggle off, the stock behavior is used (panel fades,
+//   contents use the whole screen).
+// - While "show panel" is on, the overview UI (desktop bar, search bar) is
+//   shifted out of the area occupied by the panel, and the window heap layout
+//   avoids that area.
 
 import QtQuick
 import Qt5Compat.GraphicalEffects
@@ -43,6 +47,11 @@ FocusScope {
     property bool verticalDesktopBar: KWinComponents.Workspace.desktopGridHeight >= bar.desktopCount && KWinComponents.Workspace.desktopGridHeight != 1
     property QtObject currentDesktop: KWinComponents.SceneView.currentDesktop
     property point targetScreenDesktopOffset: effect.desktopOffsetForScreen(targetScreen);
+
+    // Fork: the effect's config toggles, propagated from OverviewEffect
+    // (C++) on reconfigure.
+    readonly property bool showPanel: effect.showPanel
+    readonly property bool workspaceManagement: effect.workspaceManagement
 
     // The values of overviewVal and gridVal might not be 0 on startup,
     // but we always want to animate from 0 to those values. So, we initially
@@ -198,6 +207,16 @@ FocusScope {
                 effect.searchText = ""
             } else {
                 effect.deactivate();
+            }
+        } else if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
+            // Fork: only with the "workspace management" toggle enabled.
+            if (container.workspaceManagement) {
+                desktopModel.create(desktopModel.rowCount());
+            }
+        } else if (event.key === Qt.Key_Minus) {
+            // Fork: only with the "workspace management" toggle enabled.
+            if (container.workspaceManagement) {
+                desktopModel.remove(desktopModel.rowCount() - 1);
             }
         } else if (event.key >= Qt.Key_F1 && event.key <= Qt.Key_F12) {
             const desktopId = event.key - Qt.Key_F1;
@@ -477,6 +496,15 @@ FocusScope {
         right = Math.min(right, scr.width * capFraction);
         top = Math.min(top, scr.height * capFraction);
         bottom = Math.min(bottom, scr.height * capFraction);
+        // Fork note: with the "show panel" toggle off, the effect behaves
+        // like the stock Overview: no insets at all, so the overview
+        // contents use the whole screen.
+        if (!container.showPanel) {
+            left = 0;
+            top = 0;
+            right = 0;
+            bottom = 0;
+        }
         dockLeftInset = left > 0 ? left + spacing : 0;
         dockTopInset = top > 0 ? top + spacing : 0;
         dockRightInset = right > 0 ? right + spacing : 0;
@@ -545,6 +573,15 @@ FocusScope {
             Kirigami.PlaceholderMessage {
                 text: i18ndc("kwin", "@info:placeholder", "No other Virtual Desktops to show")
                 icon.name: "virtual-desktops-symbolic"
+            }
+
+            PC3.Button {
+                Layout.alignment: Qt.AlignHCenter
+                // Fork: only with the "workspace management" toggle enabled.
+                visible: container.workspaceManagement
+                text: i18ndc("kwin", "@action:button", "Add Virtual Desktop")
+                icon.name: "list-add-symbolic"
+                onClicked: desktopModel.create(desktopModel.rowCount())
             }
 
             PC3.Button {
@@ -960,16 +997,18 @@ FocusScope {
             wId: model.window.internalId
             x: model.window.x - targetScreen.geometry.x
             y: model.window.y - targetScreen.geometry.y
-            // Fork note: draw the panel above the dimmed backdrop (z 0) and
-            // above the overview UI (desktop bar, search results, desktop grid
-            // at z 1) as well, so it can never be covered by them. The
-            // thumbnail is only a static image and stays non-interactive.
-            z: 1.5
+            // Fork note: with the "show panel" toggle (default) the panel is
+            // drawn above the dimmed backdrop (z 0) and above the overview UI
+            // (desktop bar, search results, desktop grid at z 1) as well, so
+            // it can never be covered by them, and it stays visible at full
+            // opacity. With the toggle off, the stock behavior is restored:
+            // the panel fades away over the course of the effect and stacks
+            // by its regular stacking order. The thumbnail is only a static
+            // image and stays non-interactive either way.
+            z: container.showPanel ? 1.5 : model.window.stackingOrder
             width: model.window.width
             height: model.window.height
-            // Fork note: unlike stock Overview, don't fade the panel away
-            // during the effect. The thumbnail is static (not interactive).
-            opacity: 1
+            opacity: container.showPanel ? 1 : 1 - (gridVal + overviewVal)
 
             // Fork note: report the panel geometry so the overview can inset
             // its contents and avoid covering the panel.
@@ -983,7 +1022,8 @@ FocusScope {
     }
 
     // Model of virtual desktops, used by the desktop grid above
-    // (creating/deleting desktops from within the effect is disabled)
+    // (creating/deleting desktops from within the effect is only possible
+    // while the "workspace management" toggle is enabled)
     KWinComponents.VirtualDesktopModel {
         id: desktopModel
     }
@@ -1005,6 +1045,12 @@ FocusScope {
             }
 
             container.targetScreenDesktopOffset = effect.desktopOffsetForScreen(screen);
+        }
+        // Fork: re-derive the panel insets when the "show panel" toggle
+        // flips: the dock rects themselves do not change, but whether their
+        // area is reserved at all does.
+        function onShowPanelChanged() {
+            updateDockInsets();
         }
     }
 }

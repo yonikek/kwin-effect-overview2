@@ -184,6 +184,19 @@ void OverviewEffect::reconfigure(ReconfigureFlags)
     setAnimationDuration(animationTime(300ms).count());
     setFilterWindows(OverviewConfig::filterWindows());
 
+    // Fork: propagate the fork's toggles to the QML UI. Both are read here so
+    // that changing them in the config module applies to the next activation.
+    const bool showPanel = OverviewConfig::showPanel();
+    if (m_showPanel != showPanel) {
+        m_showPanel = showPanel;
+        Q_EMIT showPanelChanged();
+    }
+    const bool workspaceManagement = OverviewConfig::workspaceManagement();
+    if (m_workspaceManagement != workspaceManagement) {
+        m_workspaceManagement = workspaceManagement;
+        Q_EMIT workspaceManagementChanged();
+    }
+
     for (const ElectricBorder &border : std::as_const(m_borderActivate)) {
         effects->unreserveElectricBorder(border, this);
     }
@@ -238,6 +251,16 @@ void OverviewEffect::setFilterWindows(bool filterWindows)
         m_filterWindows = filterWindows;
         Q_EMIT filterWindowsChanged();
     }
+}
+
+bool OverviewEffect::showPanel() const
+{
+    return m_showPanel;
+}
+
+bool OverviewEffect::workspaceManagement() const
+{
+    return m_workspaceManagement;
 }
 
 qreal OverviewEffect::overviewPartialActivationFactor() const

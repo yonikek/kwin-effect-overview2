@@ -3,21 +3,27 @@
 A fork of KDE Plasma's **Overview** desktop effect (KWin `overview` plugin, version `6.8.1`)
 with two behavioral changes:
 
-1. **Virtual desktops can no longer be created, deleted or renamed.**
-   - The "Delete Virtual Desktop" hover button, the "Add Virtual Desktop" buttons
-     (desktop bar + single-desktop placeholder) and their drop areas are removed
-     (`src/DesktopBar.qml`, `src/Main.qml`).
-   - The `Delete` / `F2` / `+` hotkeys and the click-to-rename editor on the desktop bar
-     thumbnails are removed — desktop names are shown read-only (`src/DesktopBar.qml`).
-   - The `-` keyboard shortcut that removed the last virtual desktop is removed (`src/Main.qml`).
+1. **Virtual desktops can no longer be created, deleted or renamed** — by default;
+   toggleable.
+   - Everything the stock effect offers here (the "Delete Virtual Desktop" hover
+     button, the "Add Virtual Desktop" buttons and their drop areas, the
+     click-to-rename editor, and the `Delete` / `F2` / `-` / `+` hotkeys) is still
+     present in this fork, but gated behind the *workspace management* toggle
+     (`src/DesktopBar.qml`, `src/Main.qml`): with the toggle off (the default) the
+     desktop names are shown as read-only labels and there are no add/delete
+     affordances.
    - Arranging desktops in System Settings / KCM is still possible ("Configure Virtual
      Desktops…" remains).
 
-2. **The panel (Plasma dock) stays visible while the effect is active.**
-   - In the stock effect the dock is drawn only during the exit transition and fades away
-     as soon as the effect reaches full opacity (`opacity: 1 - (gridVal + overviewVal)` in `src/Main.qml`).
-   - In this fork the dock thumbnail is kept at full opacity, so the panel remains visible
-     (as a static, non-interactive image) behind/below the overview UI.
+2. **The panel (Plasma dock) stays visible while the effect is active** — by default;
+   toggleable ("Show the panel while the overview is active").
+   - With the toggle on (the default): in the stock effect the dock is drawn only
+     during the exit transition and fades away as soon as the effect reaches full
+     opacity (`opacity: 1 - (gridVal + overviewVal)` in `src/Main.qml`); in this fork
+     the dock thumbnail is kept at full opacity, so the panel remains visible (as a
+     static, non-interactive image) behind/below the overview UI.
+   - With the toggle off, the stock behavior is restored: the panel fades away and
+     the overview contents use the whole screen.
    - The overview contents (desktop grid / window heap) are laid out ("free-rect
      centered") inside the screen area remaining free of panel (dock) windows:
      panel insets on each axis are summed into the maximum content size, and the
@@ -32,9 +38,12 @@ with two behavioral changes:
    - Like the stock Overview effect, the fork declares `"X-KDE-ConfigModule"` in
      its `src/metadata.json` and builds a KCModule target
      (`kwin4_effect_overview2_config`, from `src/kcm/`) installed into
-     `lib/qt6/plugins/kwin/effects/configs`. It exposes the same three options
-     (ignore minimized windows, windows organized in the grid view, search
-     results include filtered windows) plus a shortcuts editor for the fork's
+     `lib/qt6/plugins/kwin/effects/configs`. It exposes the three stock
+     options (ignore minimized windows, windows organized in the grid view,
+     search results include filtered windows), the fork's two toggles —
+     "Show the panel while the overview is active" (default on) and "Allow
+     managing virtual desktops (create, delete, rename)" (default off) —
+     plus a shortcuts editor for the fork's
      global actions ("Overview 2", "Grid View 2" and the two cycle actions).
      Unlike stock, no default keybindings are set.
 

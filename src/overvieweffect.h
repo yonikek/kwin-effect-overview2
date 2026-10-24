@@ -21,6 +21,9 @@ class OverviewEffect : public QuickSceneEffect
     Q_PROPERTY(bool ignoreMinimized READ ignoreMinimized NOTIFY ignoreMinimizedChanged)
     Q_PROPERTY(bool filterWindows READ filterWindows NOTIFY filterWindowsChanged)
     Q_PROPERTY(bool organizedGrid READ organizedGrid NOTIFY organizedGridChanged)
+    // Fork: config toggles (set in reconfigure, see below)
+    Q_PROPERTY(bool showPanel READ showPanel NOTIFY showPanelChanged)
+    Q_PROPERTY(bool workspaceManagement READ workspaceManagement NOTIFY workspaceManagementChanged)
     Q_PROPERTY(int gestureThreshold READ gestureThreshold CONSTANT)
     Q_PROPERTY(qreal overviewPartialActivationFactor READ overviewPartialActivationFactor NOTIFY overviewPartialActivationFactorChanged)
     // More efficient from a property binding pov rather than checking if partialActivationFactor is strictly between 0 and 1
@@ -38,6 +41,10 @@ public:
     bool ignoreMinimized() const;
     bool organizedGrid() const;
     qreal gestureThreshold() const;
+
+    // Fork: config toggles
+    bool showPanel() const;
+    bool workspaceManagement() const;
 
     bool filterWindows() const;
     void setFilterWindows(bool filterWindows);
@@ -71,6 +78,8 @@ Q_SIGNALS:
     void ignoreMinimizedChanged();
     void filterWindowsChanged();
     void organizedGridChanged();
+    void showPanelChanged();
+    void workspaceManagementChanged();
     void desktopOffsetChanged(KWin::LogicalOutput *screen);
     void searchTextChanged();
 
@@ -96,6 +105,8 @@ private:
     QString m_searchText;
     bool m_filterWindows = true;
     int m_animationDuration = 400;
+    bool m_showPanel = true;
+    bool m_workspaceManagement = false;
     KRunner::RunnerManager *const m_manager;
 };
 

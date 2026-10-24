@@ -58,7 +58,35 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="0" colspan="2">
+   <item row="3" column="0">
+    <widget class="QLabel" name="label_ShowPanel">
+     <property name="text">
+      <string>Show the panel while the overview is active:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QCheckBox" name="kcfg_ShowPanel">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QLabel" name="label_WorkspaceManagement">
+     <property name="text">
+      <string>Allow managing virtual desktops (create, delete, rename):</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QCheckBox" name="kcfg_WorkspaceManagement">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0" colspan="2">
     <widget class="KShortcutsEditor" name="shortcutsEditor">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
