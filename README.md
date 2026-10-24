@@ -18,8 +18,12 @@ with two behavioral changes:
      as soon as the effect reaches full opacity (`opacity: 1 - (gridVal + overviewVal)` in `src/Main.qml`).
    - In this fork the dock thumbnail is kept at full opacity, so the panel remains visible
      (as a static, non-interactive image) behind/below the overview UI.
-   - The overview contents (desktop grid / window heap) are additionally inset by the
-     screen area occupied by panel (dock) windows, so the effect does not cover the panel.
+   - The overview contents (desktop grid / window heap) are laid out ("free-rect
+     centered") inside the screen area remaining free of panel (dock) windows:
+     panel insets on each axis are summed into the maximum content size, and the
+     content is centered inside the panel-free area (net offset `(left - right)/2`
+     on the x axis, `(top - bottom)/2` on the y axis), so the effect does not
+     cover panels on any edge, and a panel on any edge is treated identically.
 
 Everything else (search, KRunner integration, gestures, animations, grid view, …) is unchanged.
 

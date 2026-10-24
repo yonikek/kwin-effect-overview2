@@ -345,9 +345,12 @@ FocusScope {
         anchors.left: parent.left
         anchors.right: container.verticalDesktopBar ? undefined : parent.right
         anchors.bottom: container.verticalDesktopBar ? parent.bottom : undefined
-        // Fork note: shift the bar out of the area occupied by panel (dock) windows
+        // Fork note: shift the bar out of the area occupied by panel (dock)
+        // windows on any of the anchored edges.
         anchors.topMargin: container.dockTopInset
         anchors.leftMargin: container.dockLeftInset
+        anchors.rightMargin: container.dockRightInset
+        anchors.bottomMargin: container.dockBottomInset
         height: bar.implicitHeight + 2 * Kirigami.Units.smallSpacing
         width: bar.implicitWidth + 2 * Kirigami.Units.smallSpacing
 
@@ -368,8 +371,12 @@ FocusScope {
         anchors.left: container.verticalDesktopBar ? desktopBar.right : parent.left
         anchors.right: parent.right
         anchors.top: container.verticalDesktopBar ? parent.top : desktopBar.bottom
-        // Fork note: in vertical-bar mode the bar sits at parent.top, so also
-        // avoid the area occupied by panel (dock) windows there.
+        // Fork note: avoid the area occupied by panel (dock) windows where
+        // relevant: the right side always (the search field is centered
+        // inside this free area), the left in horizontal-bar mode, and the
+        // top in vertical-bar mode.
+        anchors.rightMargin: container.dockRightInset
+        anchors.leftMargin: container.verticalDesktopBar ? 0 : container.dockLeftInset
         anchors.topMargin: Kirigami.Units.largeSpacing
             + (container.verticalDesktopBar ? container.dockTopInset : 0)
         height: searchField.height + 1 * Kirigami.Units.largeSpacing
@@ -485,19 +492,28 @@ FocusScope {
 
 
     // These are the minimum position of maximum size of the desktop preview in the overview
-    // Fork note: barMinX/barMinY are the margins reserved for the desktop bar
-    // and top bar; the panel (dock) insets get doubled in maxWidth/maxHeight,
-    // because upstream centers the workspace tile area on the screen, splitting
-    // the reserve evenly. Doubling makes the centered tile keep a full inset
-    // (plus spacing) clear of the panel.
+    // Fork note: the screen area taken by the desktop bar and by panel (dock)
+    // windows is reserved in two different ways:
+    // - barMinX/barMinY reserve the space of the desktop bar and top bar,
+    //   which sit on fixed edges (top or left) like in the upstream layout.
+    // - Panel insets can sit on *any* edge, so they are handled symmetrically
+    //   ("free-rect centering"): overview content is sized down by the sum of
+    //   the insets on each axis (maxWidth/maxHeight) and positioned at the
+    //   center of the panel-free area, which is the screen center plus the
+    //   net offsets (dockCenterOffsetX/Y). A panel on any edge thus displaces
+    //   the content in the same way, without per-side special cases.
     property int barMinX: Kirigami.Units.largeSpacing + (container.verticalDesktopBar ? desktopBar.width : 0)
     property int barMinY: Kirigami.Units.largeSpacing + topBar.height + (container.verticalDesktopBar ? 0 : desktopBar.height)
-    property int minX: barMinX + container.dockLeftInset
-    property int minY: barMinY + container.dockTopInset
+    property int minX: barMinX
+    property int minY: barMinY
+    // Fork note: offset of the center of the panel-free area from the screen
+    // center; used to center overview content inside the free area.
+    property real dockCenterOffsetX: (container.dockLeftInset - container.dockRightInset) / 2
+    property real dockCenterOffsetY: (container.dockTopInset - container.dockBottomInset) / 2
     property int maxWidth: currentGeometry.width - barMinX
-        - 2 * (container.dockLeftInset + container.dockRightInset) - Kirigami.Units.gridUnit * 2
+        - container.dockLeftInset - container.dockRightInset - Kirigami.Units.gridUnit * 2
     property int maxHeight: currentGeometry.height - barMinY
-        - 2 * (container.dockTopInset + container.dockBottomInset) - Kirigami.Units.gridUnit * 2
+        - container.dockTopInset - container.dockBottomInset - Kirigami.Units.gridUnit * 2
 
     property int desktops: Math.max(bar.desktopCount, 2)
     property int columns: Math.ceil(desktops / rows)
@@ -662,8 +678,10 @@ FocusScope {
                     property real sizeAdjust: Math.min(maxWidth / parent.width, maxHeight / parent.height)
                     width: parent.width * (1 + (sizeAdjust - 1) * overviewVal)
                     height: parent.height * (1 + (sizeAdjust - 1) * overviewVal)
-                    x: parent.width / 2 - width / 2
-                    y: parent.height / 2 - height / 2
+                    // Fork note: center inside the panel-free area (see
+                    // dockCenterOffsetX/Y) instead of on the screen center.
+                    x: parent.width / 2 + container.dockCenterOffsetX - width / 2
+                    y: parent.height / 2 + container.dockCenterOffsetY - height / 2
                     KWinComponents.DesktopBackground {
                         id: desktopElement
                         anchors.fill: parent
@@ -762,23 +780,19 @@ FocusScope {
                     visible: !effect.filterWindows ? effect.searchText.length === 0 : true
                     // Fork note: constrain the window heap to the screen area that
                     // is not occupied by the desktop bar or panel (dock) windows,
-                    // keeping it centered inside that area.
+                    // keeping it centered inside that free area.
                     width: Math.max(Kirigami.Units.gridUnit * 4,
                                     parent.width * (1 + (backgroundArea.sizeAdjust - 1))
                                         - container.dockLeftInset - container.dockRightInset)
                     height: Math.max(Kirigami.Units.gridUnit * 4,
                                      parent.height * (1 + (backgroundArea.sizeAdjust - 1))
                                          - container.dockTopInset - container.dockBottomInset)
-                    x: parent.width / 2 - width / 2
-                        + (container.dockLeftInset - container.dockRightInset) / 2
-                    y: parent.height / 2 - height / 2
-                        + (container.dockTopInset - container.dockBottomInset) / 2
+                    x: parent.width / 2 + container.dockCenterOffsetX - width / 2
+                    y: parent.height / 2 + container.dockCenterOffsetY - height / 2
 
                     function resetPosition() {
-                        x = parent.width / 2 - width / 2
-                            + (container.dockLeftInset - container.dockRightInset) / 2;
-                        y = parent.height / 2 - height / 2
-                            + (container.dockTopInset - container.dockBottomInset) / 2;
+                        x = parent.width / 2 + container.dockCenterOffsetX - width / 2;
+                        y = parent.height / 2 + container.dockCenterOffsetY - height / 2;
                     }
                     z: 9999
                     Drag.active: dragHandler.active
