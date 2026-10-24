@@ -5,8 +5,8 @@
     SPDX-License-Identifier: GPL-2.0-or-later
 */
 
-// Fork note: the desktop bar no longer supports deleting or renaming virtual
-// desktops; the "Add Virtual Desktop" button remains.
+// Fork note: the desktop bar no longer supports creating, deleting or
+// renaming virtual desktops; the names are read-only labels.
 
 import QtQuick
 import QtQuick.Controls
@@ -29,12 +29,15 @@ Item {
 
     property bool verticalDesktopBar
     property KWinComponents.WindowModel windowModel
-    property alias desktopModel: desktopRepeater.model
     property QtObject selectedDesktop: null
     property var heap
 
     implicitHeight: columnHeight + 2 * Kirigami.Units.smallSpacing
     implicitWidth: columnWidth + 2 * Kirigami.Units.smallSpacing
+
+    KWinComponents.VirtualDesktopModel {
+        id: virtualDesktopModel
+    }
 
     Flickable {
         anchors.fill: parent
@@ -48,10 +51,11 @@ Item {
 
         Grid {
             spacing: Kirigami.Units.largeSpacing + bar.highlightThickness
-            columns: verticalDesktopBar ? 1 : desktopCount + 1
+            columns: verticalDesktopBar ? 1 : desktopCount
 
             Repeater {
                 id: desktopRepeater
+                model: virtualDesktopModel
 
                 Column {
                     id: delegate
@@ -165,48 +169,6 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                         }
-                    }
-                }
-            }
-
-            PC3.Button {
-                width: bar.desktopWidth
-                height: bar.desktopHeight
-
-                text: if (desktopCount < desktopModel.maximum) {
-                    i18nd("kwin", "Add Virtual Desktop")
-                } else {
-                    i18nd("kwin", "Virtual Desktop limit reached")
-                }
-                icon.name: "list-add"
-                display: PC3.AbstractButton.IconOnly
-                enabled: desktopCount < desktopModel.maximum
-
-                Highlight {
-                    active: parent.activeFocus
-                    hovered: parent.hovered && parent.enabled
-                }
-
-                PC3.ToolTip.text: text
-                PC3.ToolTip.visible: hovered
-                PC3. ToolTip.delay: Kirigami.Units.toolTipDelay
-                Accessible.name: text
-
-                Keys.onReturnPressed: action.trigger()
-                Keys.onEnterPressed: action.trigger()
-
-                Keys.onLeftPressed: nextItemInFocusChain(LayoutMirroring.enabled).forceActiveFocus(Qt.BacktabFocusReason);
-                Keys.onRightPressed: nextItemInFocusChain(!LayoutMirroring.enabled).forceActiveFocus(Qt.TabFocusReason);
-
-                onClicked: desktopModel.create(desktopModel.rowCount())
-
-                DropArea {
-                    anchors.fill: parent
-                    onEntered: drag => {
-                        drag.accepted = desktopCount < desktopModel.maximum;
-                    }
-                    onDropped: drag => {
-                        drag.source.desktops = [desktopModel.create(desktopModel.rowCount())];
                     }
                 }
             }

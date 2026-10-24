@@ -7,9 +7,12 @@
 */
 
 // Fork note:
-// - Virtual desktops can no longer be deleted ( "-" key removed).
+// - Virtual desktops can no longer be created, deleted or renamed
+//   ("+" key and "Add Virtual Desktop" buttons removed).
 // - The panel (dock) windows are kept visible while the effect is active
 //   instead of fading away at the end of the transition.
+// - The overview contents are inset by the area occupied by the panel
+//   (dock) windows of this screen, so the effect does not cover the panel.
 
 import QtQuick
 import Qt5Compat.GraphicalEffects
@@ -195,8 +198,6 @@ FocusScope {
             } else {
                 effect.deactivate();
             }
-        } else if (event.key === Qt.Key_Plus || event.key === Qt.Key_Equal) {
-            desktopModel.create(desktopModel.rowCount());
         } else if (event.key >= Qt.Key_F1 && event.key <= Qt.Key_F12) {
             const desktopId = event.key - Qt.Key_F1;
             if (desktopId < allDesktopHeaps.count) {
@@ -325,6 +326,8 @@ FocusScope {
 
     Item {
         id: desktopBar
+        // Fork note: keep the overview UI above the (static) panel thumbnails
+        z: 1
 
         // (overviewVal, gridVal) represents the state of the overview
         // in a 2D coordinate plane. Math.atan2 returns the angle between
@@ -348,7 +351,6 @@ FocusScope {
             id: bar
             anchors.fill: parent
             windowModel: stackModel
-            desktopModel: desktopModel
             verticalDesktopBar: container.verticalDesktopBar
             selectedDesktop: currentDesktop
             heap: allDesktopHeaps.currentHeap
@@ -357,6 +359,7 @@ FocusScope {
 
     Item {
         id: topBar
+        z: 1
         opacity: desktopBar.opacity
         anchors.left: container.verticalDesktopBar ? desktopBar.right : parent.left
         anchors.right: parent.right
@@ -388,6 +391,59 @@ FocusScope {
 
     property var currentGeometry: targetScreen.geometry
 
+    // Fork note: track the panel (dock) windows of this screen and compute
+    // the insets of the screen area they occupy, so that the overview
+    // contents (desktop grid / window heap) can avoid the panel.
+    property var dockRects: ({})
+    property real dockLeftInset: 0
+    property real dockTopInset: 0
+    property real dockRightInset: 0
+    property real dockBottomInset: 0
+
+    function registerDock(index, window) {
+        dockRects[index] = {
+            x: window.x - targetScreen.geometry.x,
+            y: window.y - targetScreen.geometry.y,
+            width: window.width,
+            height: window.height,
+            hidden: window.hidden
+        };
+        updateDockInsets();
+    }
+
+    function unregisterDock(index) {
+        delete dockRects[index];
+        updateDockInsets();
+    }
+
+    function updateDockInsets() {
+        const scr = targetScreen.geometry;
+        const snap = Kirigami.Units.gridUnit;    // docks hug a screen edge within this distance
+        const spacing = Kirigami.Units.largeSpacing;
+        let left = 0, top = 0, right = 0, bottom = 0;
+        for (const key in dockRects) {
+            const r = dockRects[key];
+            if (r.hidden) continue;
+            if (r.x <= snap) {
+                left = Math.max(left, r.x + r.width);
+            }
+            if (r.y <= snap) {
+                top = Math.max(top, r.y + r.height);
+            }
+            if (r.x + r.width >= scr.width - snap) {
+                right = Math.max(right, scr.width - r.x);
+            }
+            if (r.y + r.height >= scr.height - snap) {
+                bottom = Math.max(bottom, scr.height - r.y);
+            }
+        }
+        dockLeftInset = left > 0 ? left + spacing : 0;
+        dockTopInset = top > 0 ? top + spacing : 0;
+        dockRightInset = right > 0 ? right + spacing : 0;
+        dockBottomInset = bottom > 0 ? bottom + spacing : 0;
+    }
+
+
     // These are the minimum position of maximum size of the desktop preview in the overview
     property int minX: Kirigami.Units.largeSpacing + (container.verticalDesktopBar ? desktopBar.width : 0)
     property int minY: Kirigami.Units.largeSpacing + topBar.height + (container.verticalDesktopBar ? 0 : desktopBar.height)
@@ -416,7 +472,13 @@ FocusScope {
 
     Item {
         id: desktopGrid
-        anchors.fill: parent
+        z: 1
+        // Fork note: inset by the area occupied by the panel (dock) windows
+        // so the overview does not cover the panel.
+        x: container.dockLeftInset
+        y: container.dockTopInset
+        width: parent.width - container.dockLeftInset - container.dockRightInset
+        height: parent.height - container.dockTopInset - container.dockBottomInset
         property var dndManagerStore: ({})
 
         ColumnLayout {
@@ -430,13 +492,6 @@ FocusScope {
             Kirigami.PlaceholderMessage {
                 text: i18ndc("kwin", "@info:placeholder", "No other Virtual Desktops to show")
                 icon.name: "virtual-desktops-symbolic"
-            }
-
-            PC3.Button {
-                Layout.alignment: Qt.AlignHCenter
-                text: i18ndc("kwin", "@action:button", "Add Virtual Desktop")
-                icon.name: "list-add-symbolic"
-                onClicked: desktopModel.create(desktopModel.rowCount())
             }
 
             PC3.Button {
@@ -776,6 +831,7 @@ FocusScope {
 
     Loader {
         id: searchResults
+        z: 1
         active: effect.searchText.length > 0 && (allDesktopHeaps.currentHeap.count === 0 || !effect.filterWindows)
         anchors.left: container.verticalDesktopBar ? desktopBar.right : parent.left
         anchors.right: parent.right
@@ -838,21 +894,25 @@ FocusScope {
             wId: model.window.internalId
             x: model.window.x - targetScreen.geometry.x
             y: model.window.y - targetScreen.geometry.y
-            z: model.window.stackingOrder
+            // Fork note: draw the panel above the dimmed backdrop (z 0), but
+            // below the overview UI (desktop bar, search, grid at z 1). The
+            // thumbnail is only a static image and stays non-interactive.
+            z: 0.5
             width: model.window.width
             height: model.window.height
             // Fork note: unlike stock Overview, don't fade the panel away
             // during the effect. The thumbnail is static (not interactive).
             opacity: 1
+
+            // Fork note: report the panel geometry so the overview can inset
+            // its contents and avoid covering the panel.
+            Component.onCompleted: container.registerDock(index, model.window)
+            Component.onDestruction: container.unregisterDock(index)
         }
     }
 
     KWinComponents.WindowModel {
         id: stackModel
-    }
-
-    KWinComponents.VirtualDesktopModel {
-        id: desktopModel
     }
 
     Component.onCompleted: {

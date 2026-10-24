@@ -3,18 +3,23 @@
 A fork of KDE Plasma's **Overview** desktop effect (KWin `overview` plugin, version `6.8.1`)
 with two behavioral changes:
 
-1. **Virtual desktops can no longer be deleted or renamed.**
-   - The "Delete Virtual Desktop" hover button is removed (`src/DesktopBar.qml`).
-   - The `Delete` / `F2` hotkeys and the click-to-rename editor on the desktop bar thumbnails
-     are removed — desktop names are shown read-only (`src/DesktopBar.qml`).
+1. **Virtual desktops can no longer be created, deleted or renamed.**
+   - The "Delete Virtual Desktop" hover button, the "Add Virtual Desktop" buttons
+     (desktop bar + single-desktop placeholder) and their drop areas are removed
+     (`src/DesktopBar.qml`, `src/Main.qml`).
+   - The `Delete` / `F2` / `+` hotkeys and the click-to-rename editor on the desktop bar
+     thumbnails are removed — desktop names are shown read-only (`src/DesktopBar.qml`).
    - The `-` keyboard shortcut that removed the last virtual desktop is removed (`src/Main.qml`).
-   - *Adding* virtual desktops (`+` / "Add Virtual Desktop" button) still works.
+   - Arranging desktops in System Settings / KCM is still possible ("Configure Virtual
+     Desktops…" remains).
 
 2. **The panel (Plasma dock) stays visible while the effect is active.**
    - In the stock effect the dock is drawn only during the exit transition and fades away
      as soon as the effect reaches full opacity (`opacity: 1 - (gridVal + overviewVal)` in `src/Main.qml`).
    - In this fork the dock thumbnail is kept at full opacity, so the panel remains visible
      (as a static, non-interactive image) behind/below the overview UI.
+   - The overview contents (desktop grid / window heap) are additionally inset by the
+     screen area occupied by panel (dock) windows, so the effect does not cover the panel.
 
 Everything else (search, KRunner integration, gestures, animations, grid view, …) is unchanged.
 

@@ -3,7 +3,6 @@
         "Category": "Window Management",
         "Description": "Fork of the Overview effect with a visible panel and no virtual desktop delete/rename functionality",
         "EnabledByDefault": false,
-        "Id": "kwin4_effect_overview2",
         "License": "GPL",
         "Name": "Overview 2 (fork of Overview)",
         "Version": "6.8.1"
