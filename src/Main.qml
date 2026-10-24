@@ -485,14 +485,19 @@ FocusScope {
 
 
     // These are the minimum position of maximum size of the desktop preview in the overview
-    // Fork note: minimize/maximum sizes also respect the area occupied by
-    // panel (dock) windows, and the desktop bar is shifted out of that
-    // area by the same amount (see desktopBar anchors).
-    property int minX: Kirigami.Units.largeSpacing + (container.verticalDesktopBar ? desktopBar.width : 0) + container.dockLeftInset
-    property int minY: Kirigami.Units.largeSpacing + topBar.height
-                        + (container.verticalDesktopBar ? 0 : desktopBar.height) + container.dockTopInset
-    property int maxWidth: currentGeometry.width - minX - container.dockRightInset - Kirigami.Units.gridUnit * 2
-    property int maxHeight: currentGeometry.height - minY - container.dockBottomInset - Kirigami.Units.gridUnit * 2
+    // Fork note: barMinX/barMinY are the margins reserved for the desktop bar
+    // and top bar; the panel (dock) insets get doubled in maxWidth/maxHeight,
+    // because upstream centers the workspace tile area on the screen, splitting
+    // the reserve evenly. Doubling makes the centered tile keep a full inset
+    // (plus spacing) clear of the panel.
+    property int barMinX: Kirigami.Units.largeSpacing + (container.verticalDesktopBar ? desktopBar.width : 0)
+    property int barMinY: Kirigami.Units.largeSpacing + topBar.height + (container.verticalDesktopBar ? 0 : desktopBar.height)
+    property int minX: barMinX + container.dockLeftInset
+    property int minY: barMinY + container.dockTopInset
+    property int maxWidth: currentGeometry.width - barMinX
+        - 2 * (container.dockLeftInset + container.dockRightInset) - Kirigami.Units.gridUnit * 2
+    property int maxHeight: currentGeometry.height - barMinY
+        - 2 * (container.dockTopInset + container.dockBottomInset) - Kirigami.Units.gridUnit * 2
 
     property int desktops: Math.max(bar.desktopCount, 2)
     property int columns: Math.ceil(desktops / rows)
