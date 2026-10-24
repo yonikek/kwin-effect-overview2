@@ -348,7 +348,6 @@ FocusScope {
         // Fork note: shift the bar out of the area occupied by panel (dock) windows
         anchors.topMargin: container.dockTopInset
         anchors.leftMargin: container.dockLeftInset
-        anchors.rightMargin: container.dockRightInset
         height: bar.implicitHeight + 2 * Kirigami.Units.smallSpacing
         width: bar.implicitWidth + 2 * Kirigami.Units.smallSpacing
 
@@ -465,14 +464,25 @@ FocusScope {
         dockTopInset = top > 0 ? top + spacing : 0;
         dockRightInset = right > 0 ? right + spacing : 0;
         dockBottomInset = bottom > 0 ? bottom + spacing : 0;
+        // Fork note (debugging): log the registered dock rects and the
+        // resulting insets to the kwin journal.
+        console.warn("kwin4_effect_overview2 dock rects:",
+                     JSON.stringify(dockRects),
+                     "screen:", JSON.stringify(scr),
+                     "insets:", left.toFixed(1), top.toFixed(1),
+                     right.toFixed(1), bottom.toFixed(1));
     }
 
 
     // These are the minimum position of maximum size of the desktop preview in the overview
-    property int minX: Kirigami.Units.largeSpacing + (container.verticalDesktopBar ? desktopBar.width : 0)
-    property int minY: Kirigami.Units.largeSpacing + topBar.height + (container.verticalDesktopBar ? 0 : desktopBar.height)
-    property int maxWidth: currentGeometry.width - minX - Kirigami.Units.gridUnit * 2
-    property int maxHeight: currentGeometry.height - minY - Kirigami.Units.gridUnit * 2
+    // Fork note: minimize/maximum sizes also respect the area occupied by
+    // panel (dock) windows, and the desktop bar is shifted out of that
+    // area by the same amount (see desktopBar anchors).
+    property int minX: Kirigami.Units.largeSpacing + (container.verticalDesktopBar ? desktopBar.width : 0) + container.dockLeftInset
+    property int minY: Kirigami.Units.largeSpacing + topBar.height
+                        + (container.verticalDesktopBar ? 0 : desktopBar.height) + container.dockTopInset
+    property int maxWidth: currentGeometry.width - minX - container.dockRightInset - Kirigami.Units.gridUnit * 2
+    property int maxHeight: currentGeometry.height - minY - container.dockBottomInset - Kirigami.Units.gridUnit * 2
 
     property int desktops: Math.max(bar.desktopCount, 2)
     property int columns: Math.ceil(desktops / rows)
@@ -735,14 +745,25 @@ FocusScope {
                 WindowHeap {
                     id: heap
                     visible: !effect.filterWindows ? effect.searchText.length === 0 : true
-                    width: parent.width * (1 + (backgroundArea.sizeAdjust - 1))
-                    height: parent.height * (1 + (backgroundArea.sizeAdjust - 1))
+                    // Fork note: constrain the window heap to the screen area that
+                    // is not occupied by the desktop bar or panel (dock) windows,
+                    // keeping it centered inside that area.
+                    width: Math.max(Kirigami.Units.gridUnit * 4,
+                                    parent.width * (1 + (backgroundArea.sizeAdjust - 1))
+                                        - container.dockLeftInset - container.dockRightInset)
+                    height: Math.max(Kirigami.Units.gridUnit * 4,
+                                     parent.height * (1 + (backgroundArea.sizeAdjust - 1))
+                                         - container.dockTopInset - container.dockBottomInset)
                     x: parent.width / 2 - width / 2
+                        + (container.dockLeftInset - container.dockRightInset) / 2
                     y: parent.height / 2 - height / 2
+                        + (container.dockTopInset - container.dockBottomInset) / 2
 
                     function resetPosition() {
-                        x = parent.width / 2 - width / 2;
-                        y = parent.height / 2 - height / 2;
+                        x = parent.width / 2 - width / 2
+                            + (container.dockLeftInset - container.dockRightInset) / 2;
+                        y = parent.height / 2 - height / 2
+                            + (container.dockTopInset - container.dockBottomInset) / 2;
                     }
                     z: 9999
                     Drag.active: dragHandler.active
@@ -753,23 +774,7 @@ FocusScope {
                     Drag.keys: ["kwin-desktop"]
 
                     focus: current
-                    // Fork note: add the panel (dock) insets to the heap padding
-                    // so the window previews are arranged within the screen area
-                    // that is not covered by the panel. The padding is capped so
-                    // that the layout area never becomes degenerate (the ExpoLayout
-                    // asserts if the available area is smaller than its minimum
-                    // window size).
-                    padding: {
-                        const outerSpacing = Kirigami.Units.largeSpacing;
-                        const inset = Math.max(container.dockLeftInset,
-                                               container.dockTopInset,
-                                               container.dockRightInset,
-                                               container.dockBottomInset);
-                        const maxPadding = Math.max(outerSpacing,
-                            Math.min(parent.width, parent.height) / 2
-                                - 2 * Kirigami.Units.gridUnit);
-                        return Math.min(outerSpacing + inset, maxPadding);
-                    }
+                    padding: Kirigami.Units.largeSpacing
                     animationDuration: effect.animationDuration
                     animationEnabled:  (gridVal !== 0 || mainBackground.current) && organized
                     organized: container.state !== "initial"
