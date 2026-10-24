@@ -10,9 +10,10 @@
 // - Virtual desktops can no longer be created, deleted or renamed
 //   ("+" key and "Add Virtual Desktop" buttons removed).
 // - The panel (dock) windows are kept visible while the effect is active
-//   instead of fading away at the end of the transition.
-// - The overview contents are inset by the area occupied by the panel
-//   (dock) windows of this screen, so the effect does not cover the panel.
+//   instead of fading away at the end of the transition. They are also drawn
+//   above the overview UI so they are never covered.
+// - The overview UI (desktop bar, search bar) is shifted out of the area
+//   occupied by the panel, and the window heap layout avoids that area.
 
 import QtQuick
 import Qt5Compat.GraphicalEffects
@@ -344,6 +345,10 @@ FocusScope {
         anchors.left: parent.left
         anchors.right: container.verticalDesktopBar ? undefined : parent.right
         anchors.bottom: container.verticalDesktopBar ? parent.bottom : undefined
+        // Fork note: shift the bar out of the area occupied by panel (dock) windows
+        anchors.topMargin: container.dockTopInset
+        anchors.leftMargin: container.dockLeftInset
+        anchors.rightMargin: container.dockRightInset
         height: bar.implicitHeight + 2 * Kirigami.Units.smallSpacing
         width: bar.implicitWidth + 2 * Kirigami.Units.smallSpacing
 
@@ -364,7 +369,10 @@ FocusScope {
         anchors.left: container.verticalDesktopBar ? desktopBar.right : parent.left
         anchors.right: parent.right
         anchors.top: container.verticalDesktopBar ? parent.top : desktopBar.bottom
+        // Fork note: in vertical-bar mode the bar sits at parent.top, so also
+        // avoid the area occupied by panel (dock) windows there.
         anchors.topMargin: Kirigami.Units.largeSpacing
+            + (container.verticalDesktopBar ? container.dockTopInset : 0)
         height: searchField.height + 1 * Kirigami.Units.largeSpacing
 
         PlasmaExtras.SearchField {
@@ -473,12 +481,7 @@ FocusScope {
     Item {
         id: desktopGrid
         z: 1
-        // Fork note: inset by the area occupied by the panel (dock) windows
-        // so the overview does not cover the panel.
-        x: container.dockLeftInset
-        y: container.dockTopInset
-        width: parent.width - container.dockLeftInset - container.dockRightInset
-        height: parent.height - container.dockTopInset - container.dockBottomInset
+        anchors.fill: parent
         property var dndManagerStore: ({})
 
         ColumnLayout {
@@ -734,7 +737,14 @@ FocusScope {
                     Drag.keys: ["kwin-desktop"]
 
                     focus: current
+                    // Fork note: add the panel (dock) insets to the heap padding
+                    // so the window previews are arranged within the screen area
+                    // that is not covered by the panel.
                     padding: Kirigami.Units.largeSpacing
+                        + Math.max(container.dockLeftInset,
+                                   container.dockTopInset,
+                                   container.dockRightInset,
+                                   container.dockBottomInset)
                     animationDuration: effect.animationDuration
                     animationEnabled:  (gridVal !== 0 || mainBackground.current) && organized
                     organized: container.state !== "initial"
@@ -837,6 +847,10 @@ FocusScope {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.top: topBar.bottom
+        // Fork note: avoid the area occupied by panel (dock) windows
+        anchors.bottomMargin: container.dockBottomInset
+        anchors.leftMargin: container.verticalDesktopBar ? 0 : container.dockLeftInset
+        anchors.rightMargin: container.dockRightInset
 
         sourceComponent: Item {
             width: parent.width
@@ -894,10 +908,11 @@ FocusScope {
             wId: model.window.internalId
             x: model.window.x - targetScreen.geometry.x
             y: model.window.y - targetScreen.geometry.y
-            // Fork note: draw the panel above the dimmed backdrop (z 0), but
-            // below the overview UI (desktop bar, search, grid at z 1). The
+            // Fork note: draw the panel above the dimmed backdrop (z 0) and
+            // above the overview UI (desktop bar, search results, desktop grid
+            // at z 1) as well, so it can never be covered by them. The
             // thumbnail is only a static image and stays non-interactive.
-            z: 0.5
+            z: 1.5
             width: model.window.width
             height: model.window.height
             // Fork note: unlike stock Overview, don't fade the panel away
@@ -913,6 +928,12 @@ FocusScope {
 
     KWinComponents.WindowModel {
         id: stackModel
+    }
+
+    // Model of virtual desktops, used by the desktop grid above
+    // (creating/deleting desktops from within the effect is disabled)
+    KWinComponents.VirtualDesktopModel {
+        id: desktopModel
     }
 
     Component.onCompleted: {
