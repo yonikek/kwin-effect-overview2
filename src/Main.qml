@@ -481,13 +481,6 @@ FocusScope {
         dockTopInset = top > 0 ? top + spacing : 0;
         dockRightInset = right > 0 ? right + spacing : 0;
         dockBottomInset = bottom > 0 ? bottom + spacing : 0;
-        // Fork note (debugging): log the registered dock rects and the
-        // resulting insets to the kwin journal.
-        console.warn("kwin4_effect_overview2 dock rects:",
-                     JSON.stringify(dockRects),
-                     "screen:", JSON.stringify(scr),
-                     "insets:", left.toFixed(1), top.toFixed(1),
-                     right.toFixed(1), bottom.toFixed(1));
     }
 
 
